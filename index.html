@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentairos AI - Anime Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/5.3.12/pixi.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display/dist/index.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: #0f172a;
+            color: white;
+            overflow: hidden;
+        }
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .anime-glow {
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+        }
+        .kawaii-gradient {
+            background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
+        }
+        .chat-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background: rgba(139, 92, 246, 0.5);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-center p-4">
+    
+    <!-- Main UI Container -->
+    <div class="relative w-full max-w-5xl h-[85vh] flex gap-4">
+        
+        <!-- Left Side: Avatar Display -->
+        <div class="flex-1 glass rounded-3xl relative overflow-hidden anime-glow flex flex-col items-center justify-center">
+            <!-- Settings Toggle -->
+            <button onclick="toggleSettings()" class="absolute top-6 right-6 p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors z-10">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+
+            <!-- Settings Menu (Hidden) -->
+            <div id="settings-pane" class="absolute inset-0 bg-slate-900/90 backdrop-blur-xl z-20 flex flex-col items-center justify-center p-8 hidden animate-in fade-in zoom-in duration-200">
+                <h3 class="text-xl font-bold mb-6">Sentairos Configuration</h3>
+                <div class="w-full max-sm space-y-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-2 uppercase tracking-widest">Gemini API Key</label>
+                        <input type="password" id="api-key-input" placeholder="Enter your API key..." class="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-sm focus:outline-none focus:border-violet-500 text-white">
+                    </div>
+                    <button onclick="saveSettings()" class="w-full py-3 kawaii-gradient rounded-xl font-bold hover:opacity-90 transition-opacity">SAVE SETTINGS</button>
+                    <button onclick="toggleSettings()" class="w-full py-2 text-sm text-slate-400 hover:text-white transition-colors">CANCEL</button>
+                </div>
+            </div>
+
+            <!-- Canvas for Live2D -->
+            <canvas id="live2d-canvas" class="w-full h-full"></canvas>
+            
+            <div class="absolute bottom-10 kawaii-gradient px-4 py-1 rounded-full text-xs font-bold tracking-widest uppercase opacity-80 z-10">
+                Neural Link Active
+            </div>
+            
+            <!-- Emotion Indicators -->
+            <div class="absolute top-6 left-6 flex gap-2 z-10">
+                <div class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
+                <div id="connection-status" class="text-[10px] text-slate-400 font-mono tracking-tighter uppercase">Local Node: ONLINE</div>
+            </div>
+        </div>
+
+        <!-- Right Side: Chat & Terminal -->
+        <div class="w-[450px] flex flex-col gap-4">
+            
+            <!-- Chat History -->
+            <div class="flex-1 glass rounded-3xl p-6 flex flex-col overflow-hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold tracking-tight">Sentairos <span class="text-violet-400">Core</span></h2>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto chat-scroll space-y-4 pr-2" id="chat-history">
+                    <div class="flex flex-col items-start gap-1">
+                        <div class="bg-slate-800/50 p-3 rounded-2xl rounded-tl-none text-sm leading-relaxed max-w-[90%]">
+                            Greetings, Master. Full terminal access is now enabled. Type a message or prefix with <span class="text-green-400">/sh</span> to execute a command.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="mt-4 relative">
+                    <input type="text" placeholder="Type a message or /sh command..." class="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-3 px-4 pr-12 text-sm focus:outline-none focus:border-violet-500/50 transition-all outline-none text-white" id="user-input">
+                    <button onclick="handleSend()" class="absolute right-2 top-2 p-2 kawaii-gradient rounded-xl hover:scale-105 transition-transform">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Terminal Output -->
+            <div class="h-48 glass rounded-3xl p-4 font-mono text-[10px] overflow-hidden flex flex-col">
+                <div class="flex items-center gap-2 mb-2 border-b border-white/5 pb-1">
+                    <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                    <span class="text-slate-500 uppercase tracking-widest">Terminal Output</span>
+                </div>
+                <div class="flex-1 overflow-y-auto chat-scroll text-slate-300 space-y-1" id="terminal-logs">
+                    <div class="text-blue-400">Sentairos Shell v1.0.0 initializing...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Background Decoration -->
+    <div class="fixed top-[-10%] right-[-5%] w-[40vw] h-[40vw] rounded-full bg-violet-600/10 blur-[100px] z-[-1]"></div>
+    <div class="fixed bottom-[-10%] left-[-5%] w-[30vw] h-[30vw] rounded-full bg-pink-600/10 blur-[100px] z-[-1]"></div>
+
+    <script>
+        const input = document.getElementById('user-input');
+        const chat = document.getElementById('chat-history');
+        const terminal = document.getElementById('terminal-logs');
+        const settings = document.getElementById('settings-pane');
+        const apiInput = document.getElementById('api-key-input');
+
+        function toggleSettings() {
+            settings.classList.toggle('hidden');
+        }
+
+        async function saveSettings() {
+            const key = apiInput.value;
+            await fetch('http://127.0.0.1:8000/set_api_key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: key })
+            });
+            toggleSettings();
+            addBotMessage("API Key updated. Sentairos is ready.");
+        }
+
+        function logTerminal(msg, color = 'text-slate-300') {
+            const div = document.createElement('div');
+            div.className = color + " whitespace-pre-wrap";
+            div.innerText = msg;
+            terminal.appendChild(div);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function addBotMessage(text) {
+            const botMsg = document.createElement('div');
+            botMsg.className = 'flex flex-col items-start gap-1';
+            botMsg.innerHTML = `
+                <div class="bg-slate-800/50 p-3 rounded-2xl rounded-tl-none text-sm leading-relaxed max-w-[90%] whitespace-pre-wrap">${text}</div>
+            `;
+            chat.appendChild(botMsg);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        async function handleSend() {
+            const val = input.value.trim();
+            if (!val) return;
+
+            // Add user message to UI
+            const userMsg = document.createElement('div');
+            userMsg.className = 'flex flex-col items-end gap-1';
+            userMsg.innerHTML = `<div class="bg-violet-600 p-3 rounded-2xl rounded-tr-none text-sm leading-relaxed max-w-[90%]">${val}</div>`;
+            chat.appendChild(userMsg);
+            input.value = '';
+
+            if (val.startsWith('/sh ')) {
+                const cmd = val.replace('/sh ', '');
+                logTerminal(`> ${cmd}`, 'text-violet-400');
+                try {
+                    const res = await fetch('http://127.0.0.1:8000/terminal', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ command: cmd })
+                    });
+                    const data = await res.json();
+                    if (data.stdout) logTerminal(data.stdout);
+                    if (data.stderr) logTerminal(data.stderr, 'text-red-400');
+                } catch (e) {
+                    logTerminal("Backend disconnected.", "text-red-500");
+                }
+            } else {
+                try {
+                    const res = await fetch('http://127.0.0.1:8000/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: val })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        addBotMessage(data.reply);
+                        speak(data.reply); // Voice integration
+                    } else {
+                        addBotMessage("Error: " + data.detail);
+                    }
+                } catch (e) {
+                    addBotMessage("Error: Could not connect to local backend.");
+                }
+            }
+        }
+
+        input.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
+
+        // --- Live2D Integration ---
+        const pixiApp = new PIXI.Application({
+            view: document.getElementById('live2d-canvas'),
+            transparent: true,
+            autoStart: true,
+            resizeTo: document.getElementById('live2d-canvas').parentElement
+        });
+
+        async function initLive2D() {
+            const modelUrl = 'https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/shizuku/shizuku.model.json';
+            const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+            
+            pixiApp.stage.addChild(model);
+            
+            // Adjust scale and position
+            model.scale.set(0.2);
+            model.y = 50;
+            
+            // Interactive eye tracking
+            model.on('hit', (hitAreas) => {
+                if (hitAreas.includes('body')) model.motion('tap_body');
+            });
+        }
+        initLive2D();
+
+        // --- Voice Trigger ---
+        async function speak(text) {
+            await fetch('http://127.0.0.1:8000/voice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text })
+            });
+        }
+    </script>
+</body>
+</html>

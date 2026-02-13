@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+google-generativeai
+python-dotenv
+requests
+psutil
+pywebview
+gTTS
+pygame
