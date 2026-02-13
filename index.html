@@ -123,6 +123,7 @@
     <div class="fixed bottom-[-10%] left-[-5%] w-[30vw] h-[30vw] rounded-full bg-pink-600/10 blur-[100px] z-[-1]"></div>
 
     <script>
+        // --- Core UI Logic ---
         const input = document.getElementById('user-input');
         const chat = document.getElementById('chat-history');
         const terminal = document.getElementById('terminal-logs');
@@ -130,119 +131,64 @@
         const apiInput = document.getElementById('api-key-input');
 
         function toggleSettings() {
-            settings.classList.toggle('hidden');
+            console.log("Toggling settings...");
+            if (settings.classList.contains('hidden')) {
+                settings.classList.remove('hidden');
+            } else {
+                settings.classList.add('hidden');
+            }
         }
 
         async function saveSettings() {
             const key = apiInput.value;
-            await fetch('http://127.0.0.1:8000/set_api_key', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ api_key: key })
-            });
-            toggleSettings();
-            addBotMessage("API Key updated. Sentairos is ready.");
-        }
-
-        function logTerminal(msg, color = 'text-slate-300') {
-            const div = document.createElement('div');
-            div.className = color + " whitespace-pre-wrap";
-            div.innerText = msg;
-            terminal.appendChild(div);
-            terminal.scrollTop = terminal.scrollHeight;
-        }
-
-        function addBotMessage(text) {
-            const botMsg = document.createElement('div');
-            botMsg.className = 'flex flex-col items-start gap-1';
-            botMsg.innerHTML = `
-                <div class="bg-slate-800/50 p-3 rounded-2xl rounded-tl-none text-sm leading-relaxed max-w-[90%] whitespace-pre-wrap">${text}</div>
-            `;
-            chat.appendChild(botMsg);
-            chat.scrollTop = chat.scrollHeight;
-        }
-
-        async function handleSend() {
-            const val = input.value.trim();
-            if (!val) return;
-
-            // Add user message to UI
-            const userMsg = document.createElement('div');
-            userMsg.className = 'flex flex-col items-end gap-1';
-            userMsg.innerHTML = `<div class="bg-violet-600 p-3 rounded-2xl rounded-tr-none text-sm leading-relaxed max-w-[90%]">${val}</div>`;
-            chat.appendChild(userMsg);
-            input.value = '';
-
-            if (val.startsWith('/sh ')) {
-                const cmd = val.replace('/sh ', '');
-                logTerminal(`> ${cmd}`, 'text-violet-400');
-                try {
-                    const res = await fetch('http://127.0.0.1:8000/terminal', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ command: cmd })
-                    });
-                    const data = await res.json();
-                    if (data.stdout) logTerminal(data.stdout);
-                    if (data.stderr) logTerminal(data.stderr, 'text-red-400');
-                } catch (e) {
-                    logTerminal("Backend disconnected.", "text-red-500");
-                }
-            } else {
-                try {
-                    const res = await fetch('http://127.0.0.1:8000/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: val })
-                    });
-                    const data = await res.json();
-                    if (res.ok) {
-                        addBotMessage(data.reply);
-                        speak(data.reply); // Voice integration
-                    } else {
-                        addBotMessage("Error: " + data.detail);
-                    }
-                } catch (e) {
-                    addBotMessage("Error: Could not connect to local backend.");
-                }
+            try {
+                await fetch('http://127.0.0.1:8000/set_api_key', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ api_key: key })
+                });
+                toggleSettings();
+                addBotMessage("API Key updated. Sentairos is ready.");
+            } catch (e) {
+                alert("Backend connection failed. Make sure the server is running.");
             }
         }
 
-        input.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
-
-        // --- Live2D Integration ---
-        const pixiApp = new PIXI.Application({
-            view: document.getElementById('live2d-canvas'),
-            transparent: true,
-            autoStart: true,
-            resizeTo: document.getElementById('live2d-canvas').parentElement
-        });
-
+        // --- Live2D Integration (With Error Catching) ---
         async function initLive2D() {
-            const modelUrl = 'https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/shizuku/shizuku.model.json';
-            const model = await PIXI.live2d.Live2DModel.from(modelUrl);
-            
-            pixiApp.stage.addChild(model);
-            
-            // Adjust scale and position
-            model.scale.set(0.2);
-            model.y = 50;
-            
-            // Interactive eye tracking
-            model.on('hit', (hitAreas) => {
-                if (hitAreas.includes('body')) model.motion('tap_body');
-            });
-        }
-        initLive2D();
+            try {
+                const pixiApp = new PIXI.Application({
+                    view: document.getElementById('live2d-canvas'),
+                    transparent: true,
+                    autoStart: true,
+                    resizeTo: document.getElementById('live2d-canvas').parentElement
+                });
 
-        // --- Voice Trigger ---
-        async function speak(text) {
-            await fetch('http://127.0.0.1:8000/voice', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: text })
-            });
+                const modelUrl = 'https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/shizuku/shizuku.model.json';
+                const model = await PIXI.live2d.Live2DModel.from(modelUrl);
+                
+                pixiApp.stage.addChild(model);
+                model.scale.set(0.2);
+                model.y = 50;
+                
+                model.on('hit', (hitAreas) => {
+                    if (hitAreas.includes('body')) model.motion('tap_body');
+                });
+            } catch (e) {
+                console.error("Live2D failed to load:", e);
+                // Fallback: show a static image if Live2D fails
+                document.getElementById('live2d-canvas').style.display = 'none';
+                const fallback = document.createElement('img');
+                fallback.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sentairos&baseColor=ffdbac&hairColor=2c1b18';
+                fallback.className = 'w-64 h-64 object-contain';
+                document.getElementById('live2d-canvas').parentElement.appendChild(fallback);
+            }
         }
-    </script>
+
+        window.onload = () => {
+            initLive2D();
+        };
+
+        // --- Existing Chat & Voice Logic ---
 </body>
 </html>

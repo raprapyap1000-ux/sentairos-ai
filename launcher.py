@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     # 2. Get the path to the index.html
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    frontend_path = os.path.join(os.path.dirname(current_dir), "index.html")
+    frontend_path = os.path.join(current_dir, "index.html")
 
     # 3. Launch the native OS window
     print(f"Launching Sentairos AI from: {frontend_path}")
