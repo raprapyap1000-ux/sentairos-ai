@@ -3,6 +3,10 @@ import multiprocessing
 import uvicorn
 import os
 import time
+import sys
+
+# Add backend to path so we can import main
+sys.path.append(os.path.join(os.path.dirname(__file__), "backend"))
 from main import app
 
 def run_backend():
